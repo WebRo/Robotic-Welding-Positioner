@@ -297,6 +297,11 @@ void loop() {
 // ============================================================================
 
 void processCommand(String cmd) {
+  if (cmd.startsWith("STATUS:") || cmd.startsWith("STATUS|") ||
+      cmd.startsWith("ERROR:") || cmd.startsWith("STEPS:") ||
+      cmd == "SYSTEM_READY" || cmd == "HOMED") {
+    return;
+  }
   // توزيع المهام حسب الأمر الوارد من Node-RED
   if (cmd == "HOMING") {
     performHoming(); // بدء عملية التصفير والعودة للصفر

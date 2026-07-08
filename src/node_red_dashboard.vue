@@ -979,7 +979,7 @@ export default {
 
     this.statusInterval = setInterval(() => {
       if (!this.isMoving && !this.isHoming && !this.isProgramRunning) {
-        this.send({ payload: "STATUS" });
+        this.sendCommand("STATUS");
       }
     }, 1500);
 
@@ -1187,6 +1187,12 @@ export default {
       return selected[key] || this.translations.en[key] || key;
     },
 
+    sendCommand(command) {
+      const cleanCommand = String(command || "").trim();
+      if (!cleanCommand) return;
+      this.send({ payload: cleanCommand + "\n" });
+    },
+
     resetWeldedPieces() {
       this.weldedPieces = 0;
       localStorage.setItem('welding_welded_pieces', '0');
@@ -1206,7 +1212,7 @@ export default {
     sendCobotTimeout() {
       localStorage.setItem('welding_cobot_timeout_seconds', String(this.cobotTimeoutSetting));
       this.cobotSecondsLeft = null;
-      this.send({ payload: "SET_COBOT_TIMEOUT " + this.cobotTimeoutSetting });
+      this.sendCommand("SET_COBOT_TIMEOUT " + this.cobotTimeoutSetting);
     },
 
     // ---------------------------------------------------------------
@@ -1215,7 +1221,7 @@ export default {
     // ---------------------------------------------------------------
     disarmIfArmed() {
       if (this.isArmed) {
-        this.send({ payload: "DISARM" });
+        this.sendCommand("DISARM");
         this.isArmed = false;
         this.isWaitingCobot = false;
         this.cobotSecondsLeft = null;
@@ -1237,7 +1243,7 @@ export default {
         active: true
       };
       this.positions.push(newPos);
-      this.send({ payload: "ADD" });
+      this.sendCommand("ADD");
     },
 
     togglePositionActive(pos) {
@@ -1296,7 +1302,7 @@ export default {
       // Motor movement only works in normal IDLE state.
       if (this.isArmed) { this.disarmIfArmed(); return; }
       this.isMoving = true;
-      this.send({ payload: "MOVE_FORWARD" });
+      this.sendCommand("MOVE_FORWARD");
     },
 
     moveBackward() {
@@ -1307,19 +1313,19 @@ export default {
       // Motor movement only works in normal IDLE state.
       if (this.isArmed) { this.disarmIfArmed(); return; }
       this.isMoving = true;
-      this.send({ payload: "MOVE_BACKWARD" });
+      this.sendCommand("MOVE_BACKWARD");
     },
 
     holdMotor() {
       if (this.isProgramRunning && !this.isProgramPaused) { return; }
       if (!this.isProgramPaused) this.disarmIfArmed();
       this.isMoving = false;
-      this.send({ payload: "HOLD" });
+      this.sendCommand("HOLD");
     },
 
     toggleProgramPause() {
       if (!this.isArmed && !this.isProgramRunning && !this.isProgramPaused) return;
-      this.send({ payload: "PAUSE_PROGRAM" });
+      this.sendCommand("PAUSE_PROGRAM");
     },
 
     startHoming() {
@@ -1328,7 +1334,7 @@ export default {
       this.disarmIfArmed();
       this.resetWeldedPieces();
       this.isHoming = true;
-      this.send({ payload: "HOMING" });
+      this.sendCommand("HOMING");
     },
 
     goHome() {
@@ -1338,7 +1344,7 @@ export default {
       if (this.isArmed) { this.disarmIfArmed(); } // Disarm but continue to move
 
       this.isMoving = true;
-      this.send({ payload: "GO_HOME" });
+      this.sendCommand("GO_HOME");
     },
 
     openGoToPosDialog() {
@@ -1356,7 +1362,7 @@ export default {
       if (!selectedPosition || !this.canGoToPos) return;
       this.showGoToPosDialog = false;
       this.isMoving = true;
-      this.send({ payload: "GO_TO_POS " + selectedPosition.steps });
+      this.sendCommand("GO_TO_POS " + selectedPosition.steps);
     },
 
     stopProgramKeepHome() {
@@ -1368,7 +1374,7 @@ export default {
       this.isWaitingCobot = false;
       this.cobotSecondsLeft = null;
       this.activePositionIndex = -1;
-      this.send({ payload: "STOP" });
+      this.sendCommand("STOP");
     },
 
     setHomeHere() {
@@ -1380,7 +1386,7 @@ export default {
       this.showHomeDialog = false;
       this.resetWeldedPieces();
       this.disarmIfArmed(); // Disarm if it was armed
-      this.send({ payload: "SET_HOME_HERE" });
+      this.sendCommand("SET_HOME_HERE");
     },
 
     emergencyStop() {
@@ -1391,7 +1397,7 @@ export default {
       this.isArmed = false;
       this.currentSteps = 0;
       this.activePositionIndex = -1;
-      this.send({ payload: "ESTOP" });
+      this.sendCommand("ESTOP");
     },
 
     startProgram() {
@@ -1415,7 +1421,7 @@ export default {
     confirmStartProgram() {
       if (!this.pendingStartStepList) return;
       this.showStartDialog = false;
-      this.send({ payload: "START_PROGRAM " + this.pendingStartStepList });
+      this.sendCommand("START_PROGRAM " + this.pendingStartStepList);
       this.pendingStartStepList = "";
       this.pendingStartPositionCount = 0;
     },
@@ -1459,7 +1465,7 @@ export default {
 
     updateSpeed(val) {
       if (val !== this.lastSpeedSent) {
-        this.send({ payload: "SET_SPEED " + val });
+        this.sendCommand("SET_SPEED " + val);
         this.lastSpeedSent = val;
       }
     }
