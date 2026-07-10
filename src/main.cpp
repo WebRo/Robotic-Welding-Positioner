@@ -737,7 +737,8 @@ void handleProgramPause() {
   sendToNodeRED("STATUS:PROGRAM_PAUSED");
 }
 void handleStopKeepHome() {
-  if (!programRunning && !programPaused && currentState != ARMED) {
+  bool canStopManualPositionMove = currentState == MANUAL_GO_HOME || currentState == MANUAL_GO_TO_POS;
+  if (!programRunning && !programPaused && currentState != ARMED && !canStopManualPositionMove) {
     sendToNodeRED("ERROR:STOP_ONLY_WHILE_PROGRAM_ACTIVE");
     return;
   }
@@ -757,6 +758,7 @@ void handleStopKeepHome() {
   currentState = IDLE;
 
   updateLED(LED_GREEN);
+  sendToNodeRED("STEPS:" + String(stepper.currentPosition()));
   sendToNodeRED("STATUS:PROGRAM_STOPPED_KEEP_HOME");
   sendToNodeRED("STATUS:PRESS_START_WHEN_READY");
 }

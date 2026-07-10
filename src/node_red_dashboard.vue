@@ -367,7 +367,7 @@ font-size: xxx-large;
               </v-btn>
             </v-col>
             <v-col cols="6" sm="4">
-              <v-btn block color="blue-grey" size="large" @click="loadFromFile" :disabled="isProgramRunning">
+              <v-btn block color="blue-grey" size="large" @click="loadFromFile" :disabled="isMoving || isHoming || isProgramRunning">
                 <v-icon left>mdi-folder-open</v-icon> {{ tr("load") }}
               </v-btn>
             </v-col>
@@ -470,7 +470,7 @@ font-size: xxx-large;
               </v-btn>
             </v-col>
             <v-col cols="6">
-              <v-btn block color="deep-orange" size="x-large" @click="stopProgramKeepHome" :disabled="!isProgramRunning || isProgramPaused">
+              <v-btn block color="deep-orange" size="x-large" @click="stopProgramKeepHome" :disabled="!canStop">
                 <v-icon left>mdi-stop-circle</v-icon> STOP
               </v-btn>
             </v-col>
@@ -928,6 +928,7 @@ export default {
       isHomed: false,
       isMoving: false,
       isManualJogging: false,
+      isAutoPositionMove: false,
       isHoming: false,
       isProgramRunning: false,
       isProgramPaused: false,
@@ -1018,6 +1019,10 @@ export default {
       return this.isMoving || this.isHoming || (this.isProgramRunning && !this.isProgramPaused);
     },
 
+    canStop() {
+      return (this.isProgramRunning && !this.isProgramPaused) || this.isAutoPositionMove;
+    },
+
     statusColor() {
       if (this.isProgramPaused)  return "amber";
       if (this.isArmed)          return "purple";
@@ -1054,12 +1059,29 @@ export default {
       if (!isNaN(parsedPieces)) this.weldedPieces = parsedPieces;
     }
 
+    const savedSpeed = localStorage.getItem('welding_motor_speed');
+    if (savedSpeed !== null) {
+      const parsedSpeed = parseInt(savedSpeed);
+      if (!isNaN(parsedSpeed) && parsedSpeed >= 10 && parsedSpeed <= 100) {
+        this.motorSpeed = parsedSpeed;
+      }
+    }
+
+    const savedAcceleration = localStorage.getItem('welding_motor_acceleration');
+    if (savedAcceleration !== null) {
+      const parsedAcceleration = parseInt(savedAcceleration);
+      if (!isNaN(parsedAcceleration) && parsedAcceleration >= 5 && parsedAcceleration <= 100) {
+        this.motorAcceleration = parsedAcceleration;
+      }
+    }
+
     const savedTimeout = localStorage.getItem('welding_cobot_timeout_seconds');
     if (savedTimeout !== null) {
       const parsedTimeout = parseInt(savedTimeout);
       if (!isNaN(parsedTimeout)) this.cobotTimeoutSetting = parsedTimeout === 120 ? 900 : parsedTimeout;
     }
     this.sendCobotTimeout();
+    this.updateSpeed(this.motorSpeed);
     this.updateAcceleration(this.motorAcceleration);
   },
 
@@ -1102,6 +1124,7 @@ export default {
             this.isHoming = (state === 1);
             this.isMoving = (state === 2 || state === 3 || state === 7 || state === 11 || state === 12 || state === 13 || state === 17);
             this.isManualJogging = (state === 2 || state === 3);
+            this.isAutoPositionMove = (state === 13 || state === 17);
             this.isProgramPaused = this.isProgramPaused || (state === 16);
 
             if (this.isArmed) {
@@ -1151,6 +1174,7 @@ export default {
           text === "STATUS:MOTOR_STOPPED_AT_ZERO" ||
           text === "STATUS:RETURNED_TO_HOME_MANUALLY") {
         this.isMoving = false;
+        this.isAutoPositionMove = false;
       }
 
       // Arduino confirmed it is armed and waiting for robot signal
@@ -1408,6 +1432,7 @@ export default {
 
       this.isMoving = true;
       this.isManualJogging = false;
+      this.isAutoPositionMove = true;
       this.sendCommand("GO_HOME");
     },
 
@@ -1427,12 +1452,14 @@ export default {
       this.showGoToPosDialog = false;
       this.isMoving = true;
       this.isManualJogging = false;
+      this.isAutoPositionMove = true;
       this.sendCommand("GO_TO_POS " + selectedPosition.steps);
     },
 
     stopProgramKeepHome() {
-      if (!this.isProgramRunning || this.isProgramPaused) return;
+      if (!this.canStop) return;
       this.isMoving = false;
+      this.isAutoPositionMove = false;
       this.isProgramRunning = false;
       this.isProgramPaused = false;
       this.isArmed = false;
@@ -1493,7 +1520,15 @@ export default {
 
     saveToFile() {
       // Saving to file does NOT change positions, so no disarm needed
-      const data = { timestamp: new Date().toISOString(), positions: this.positions };
+      const data = {
+        timestamp: new Date().toISOString(),
+        positions: this.positions,
+        settings: {
+          motorSpeed: this.motorSpeed,
+          motorAcceleration: this.motorAcceleration,
+          cobotTimeoutSetting: this.cobotTimeoutSetting
+        }
+      };
       const dataStr = JSON.stringify(data, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
@@ -1504,7 +1539,7 @@ export default {
     },
 
     loadFromFile() {
-      if (this.isProgramRunning) { return; }
+      if (this.isMoving || this.isHoming || this.isProgramRunning) { return; }
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.json';
@@ -1519,6 +1554,9 @@ export default {
                 this.disarmIfArmed();
                 this.positions = data.positions.map(pos => ({ ...pos, active: pos.active !== false }));
                 this.nextId = Math.max(...this.positions.map(p => p.id || 0)) + 1;
+                if (data.settings) {
+                  this.applyLoadedSettings(data.settings);
+                }
               } else { alert(this.tr("invalidFile")); }
             } catch (err) { alert(this.tr("errorReadingFile") + ": " + err.message); }
           };
@@ -1528,8 +1566,32 @@ export default {
       input.click();
     },
 
+    applyLoadedSettings(settings) {
+      const loadedSpeed = parseInt(settings.motorSpeed);
+      if (!isNaN(loadedSpeed) && loadedSpeed >= 10 && loadedSpeed <= 100) {
+        this.motorSpeed = loadedSpeed;
+        localStorage.setItem('welding_motor_speed', String(loadedSpeed));
+        this.updateSpeed(loadedSpeed);
+      }
+
+      const loadedAcceleration = parseInt(settings.motorAcceleration);
+      if (!isNaN(loadedAcceleration) && loadedAcceleration >= 5 && loadedAcceleration <= 100) {
+        this.motorAcceleration = loadedAcceleration;
+        localStorage.setItem('welding_motor_acceleration', String(loadedAcceleration));
+        this.updateAcceleration(loadedAcceleration);
+      }
+
+      const loadedTimeout = parseInt(settings.cobotTimeoutSetting);
+      if (!isNaN(loadedTimeout)) {
+        this.cobotTimeoutSetting = loadedTimeout === 120 ? 900 : loadedTimeout;
+        localStorage.setItem('welding_cobot_timeout_seconds', String(this.cobotTimeoutSetting));
+        this.sendCobotTimeout();
+      }
+    },
+
     updateSpeed(val) {
       if (this.slidersLocked) return;
+      localStorage.setItem('welding_motor_speed', String(val));
       if (val !== this.lastSpeedSent) {
         this.sendCommand("SET_SPEED " + val);
         this.lastSpeedSent = val;
@@ -1538,6 +1600,7 @@ export default {
 
     updateAcceleration(val) {
       if (this.slidersLocked) return;
+      localStorage.setItem('welding_motor_acceleration', String(val));
       if (val !== this.lastAccelerationSent) {
         this.sendCommand("SET_ACCELERATION " + val);
         this.lastAccelerationSent = val;
