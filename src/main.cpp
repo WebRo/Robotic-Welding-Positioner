@@ -171,6 +171,7 @@ unsigned long pausedCobotRemainingMs = 0;
 unsigned long pausedCountdownRemainingMs = 0;
 bool pausedCobotFinishedSignal = false;
 float speedPercentage = 100.0;
+float accelerationPercentage = 30.0;
 unsigned long cobotTimeoutMs = COBOT_TIMEOUT_MS;
 
 // متغيرات مصفوفة النقاط والزوايا
@@ -221,6 +222,9 @@ void activateRelayToCobot();
 void completeWeldPosition();
 void handleError(String errorMsg);
 void updateLED(uint32_t color);
+float scaledAcceleration(float baseAcceleration);
+float configuredAcceleration();
+float configuredProgramAcceleration();
 void sendToNodeRED(String message);
 
 // ============================================================================
@@ -249,7 +253,7 @@ void setup() {
 
   // 4. إعدادات مكتبة المحرك (السرعة القصوى والتسارع)
   stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
-  stepper.setAcceleration(ACCELERATION);
+  stepper.setAcceleration(configuredAcceleration());
 
   // 5. تشغيل إضاءة الـ LED ووضعها على اللون الأخضر دلالة على الجاهزية
   strip.begin();
@@ -371,6 +375,18 @@ void processCommand(String cmd) {
       if (currentState != HOMING) stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
       sendToNodeRED("STATUS:SPEED_SET_TO_" + String((int)speedPercentage));
     }
+  } else if (cmd.startsWith("SET_ACCELERATION ")) {
+    float newAcceleration = cmd.substring(17).toFloat();
+    if (newAcceleration >= 5.0 && newAcceleration <= 100.0) {
+      accelerationPercentage = newAcceleration;
+      if (currentState == PROGRAM_MOVING || currentState == RETURNING_HOME ||
+          currentState == MANUAL_GO_HOME || currentState == MANUAL_GO_TO_POS) {
+        stepper.setAcceleration(configuredProgramAcceleration());
+      } else {
+        stepper.setAcceleration(configuredAcceleration());
+      }
+      sendToNodeRED("STATUS:ACCELERATION_SET_TO_" + String((int)accelerationPercentage));
+    }
   } else if (cmd == "STATUS") {
     // إذا طلب Node-RED حالة النظام نرسل له حزمة معلومات (الزاوية، الحالة، هل تم
     // التصفير)
@@ -402,7 +418,7 @@ void performHoming() {
 
   digitalWrite(ENABLE_PIN, LOW); // تشغيل وتمكين المحرك
   stepper.setMaxSpeed(HOMING_SPEED); // استخدام السرعة البطيئة المخصصة للتصفير
-  stepper.setAcceleration(ACCELERATION); // استخدام التسارع لمنع توقف الموتور المفاجئ (Stall)
+  stepper.setAcceleration(configuredAcceleration()); // استخدام التسارع لمنع توقف الموتور المفاجئ (Stall)
   stepper.move(1000000); // إعطاء هدف بعيد جداً للأمام ليستمر بالدوران حتى يلمس المستشعر
 
   homingStartTime = millis(); // حفظ وقت البداية لعد 30 ثانية للطوارئ
@@ -547,7 +563,7 @@ void handleGoHome() {
   digitalWrite(ENABLE_PIN, LOW);
   updateLED(LED_BLUE);
   stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
-  stepper.setAcceleration(PROGRAM_ACCELERATION);
+  stepper.setAcceleration(configuredProgramAcceleration());
   if (stepper.currentPosition() != 0) {
     stepper.moveTo(stepper.currentPosition());
     stepper.moveTo(0);
@@ -581,7 +597,7 @@ void handleGoToPos(String cmd) {
   digitalWrite(ENABLE_PIN, LOW);
   updateLED(LED_BLUE);
   stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
-  stepper.setAcceleration(PROGRAM_ACCELERATION);
+  stepper.setAcceleration(configuredProgramAcceleration());
   stepper.moveTo(stepper.currentPosition());
   stepper.moveTo(targetSteps);
   currentState = MANUAL_GO_TO_POS;
@@ -841,7 +857,7 @@ void moveToCurrentTarget() {
 
   stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0)); // ضبط السرعة القصوى حسب النسبة المحددة من الواجهة
   stepper.setAcceleration(
-      PROGRAM_ACCELERATION); // إستخدام تسارع عالي جداً لإلغاء التوقف الناعم
+      configuredProgramAcceleration()); // إستخدام تسارع عالي جداً لإلغاء التوقف الناعم
   stepper.moveTo(
       targetSteps); // إرسال الأمر للمحرك للذهاب للموقع (Non-blocking)
 
@@ -1008,7 +1024,7 @@ void handleSystemState() {
         updateLED(LED_BLUE);
 
         stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
-        stepper.setAcceleration(PROGRAM_ACCELERATION);
+        stepper.setAcceleration(configuredProgramAcceleration());
         stepper.moveTo(0);
 
         currentState = RETURNING_HOME; // الانتقال للحالة الجديدة
@@ -1106,4 +1122,16 @@ void updateLED(uint32_t color) {
 }
 
 // دالة تحديث اللمبة باللون المطلوب بكل سهولة
+float scaledAcceleration(float baseAcceleration) {
+  float scaledValue = baseAcceleration * (accelerationPercentage / 100.0);
+  if (scaledValue < 1.0) return 1.0;
+  return scaledValue;
+}
+
+float configuredAcceleration() { return scaledAcceleration(ACCELERATION); }
+
+float configuredProgramAcceleration() {
+  return scaledAcceleration(PROGRAM_ACCELERATION);
+}
+
 void sendToNodeRED(String message) { Serial.println(message); }

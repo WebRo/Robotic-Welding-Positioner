@@ -136,6 +136,16 @@ font-size: xxx-large;
   font-weight: 800;
 }
 
+.slider-disabled-panel {
+  opacity: 0.45;
+  filter: grayscale(55%);
+  cursor: not-allowed;
+}
+
+.slider-disabled-panel * {
+  cursor: not-allowed !important;
+}
+
 .timeout-control.timeout-control .timeout-chip .v-chip__content,
 .timeout-control.timeout-control .timeout-select .v-field,
 .timeout-control.timeout-control .timeout-select .v-field__input,
@@ -395,6 +405,7 @@ font-size: xxx-large;
 
           <v-alert class="mt-4 mb-4 text-left" :color="statusColor" variant="tonal" border="start" border-color="primary">
             <strong>{{ tr("status") }}:</strong> {{ statusText }}
+            <span v-if="showPressStartHint" class="ml-2 font-weight-bold text-primary">— {{ tr("pressStart") }}</span>
           </v-alert>
 
           <!-- MANUAL JOGGING: disabled only when program is ACTIVELY running -->
@@ -413,7 +424,7 @@ font-size: xxx-large;
 
           <v-row dense class="mt-3">
             <v-col cols="6">
-              <v-btn block color="brown" size="x-large" @click="holdMotor" :disabled="!isMoving || (isProgramRunning && !isProgramPaused)">
+              <v-btn block color="brown" size="x-large" @click="holdMotor" :disabled="!isManualJogging || (isProgramRunning && !isProgramPaused)">
                 <v-icon left>mdi-pause</v-icon> HOLD
               </v-btn>
             </v-col>
@@ -486,23 +497,48 @@ font-size: xxx-large;
             </v-col>
           </v-row>
 
-          <!-- MOTOR SPEED -->
-          <h3 class="text-grey-darken-1 mt-6 mb-2">{{ tr("motorSpeed") }}</h3>
-          <v-slider
-            v-model="motorSpeed"
-            min="10"
-            max="100"
-            step="5"
-            thumb-label="always"
-            color="primary"
-            track-color="grey-lighten-2"
-            @update:model-value="updateSpeed"
-            hide-details
-          >
-            <template v-slot:append>
-              <span class="text-h6 font-weight-bold ml-2">{{ motorSpeed }} %</span>
-            </template>
-          </v-slider>
+          <v-row class="mt-6">
+            <v-col cols="12" md="6" :class="{ 'slider-disabled-panel': slidersLocked }">
+              <h3 class="text-grey-darken-1 mb-2">{{ tr("motorSpeed") }}</h3>
+              <v-slider
+                v-model="motorSpeed"
+                min="10"
+                max="100"
+                step="5"
+                thumb-label="always"
+                color="primary"
+                track-color="grey-lighten-2"
+                :disabled="slidersLocked"
+                :readonly="slidersLocked"
+                @update:model-value="updateSpeed"
+                hide-details
+              >
+                <template v-slot:append>
+                  <span class="text-h6 font-weight-bold ml-2">{{ motorSpeed }} %</span>
+                </template>
+              </v-slider>
+            </v-col>
+            <v-col cols="12" md="6" :class="{ 'slider-disabled-panel': slidersLocked }">
+              <h3 class="text-grey-darken-1 mb-2">{{ tr("motorAcceleration") }}</h3>
+              <v-slider
+                v-model="motorAcceleration"
+                min="5"
+                max="100"
+                step="5"
+                thumb-label="always"
+                color="primary"
+                track-color="grey-lighten-2"
+                :disabled="slidersLocked"
+                :readonly="slidersLocked"
+                @update:model-value="updateAcceleration"
+                hide-details
+              >
+                <template v-slot:append>
+                  <span class="text-h6 font-weight-bold ml-2">{{ motorAcceleration }} %</span>
+                </template>
+              </v-slider>
+            </v-col>
+          </v-row>
 
         </v-card>
       </v-col>
@@ -618,6 +654,7 @@ export default {
           noPositions: "No positions added yet. Move motor and press ADD.",
           actualPosition: "ACTUAL POSITION (STEPS)",
           motorSpeed: "MOTOR SPEED",
+          motorAcceleration: "ACCELERATION",
           setNewHomePosition: "Set New Home Position",
           setHomeMessage: "You are about to zero the counter and set the new Home (0 steps) to this current physical position.",
           areYouSure: "Are you sure you want to proceed?",
@@ -646,6 +683,7 @@ export default {
           notHomed: "NOT HOMED - Press HOMING button",
           motorMoving: "Motor moving...",
           ready: "Ready",
+          pressStart: "Press START",
           mustHomeFirst: "Must press HOMING first!",
           stopMotorFirstHold: "Stop the motor first (press HOLD)",
           deletePosition: "Delete this position?",
@@ -672,6 +710,7 @@ export default {
           noPositions: "Noch keine Positionen hinzugefügt. Motor bewegen und ADD drücken.",
           actualPosition: "AKTUELLE POSITION (SCHRITTE)",
           motorSpeed: "MOTORGESCHWINDIGKEIT",
+          motorAcceleration: "BESCHLEUNIGUNG",
           setNewHomePosition: "Neue Home-Position setzen",
           setHomeMessage: "Der Zähler wird auf Null gesetzt und die aktuelle physische Position als Home (0 Schritte) gespeichert.",
           areYouSure: "Möchten Sie fortfahren?",
@@ -700,6 +739,7 @@ export default {
           notHomed: "NICHT REFERENZIERT - HOMING drücken",
           motorMoving: "Motor bewegt sich...",
           ready: "Bereit",
+          pressStart: "START drücken",
           mustHomeFirst: "Zuerst HOMING drücken!",
           stopMotorFirstHold: "Motor zuerst stoppen (HOLD drücken)",
           deletePosition: "Diese Position löschen?",
@@ -726,6 +766,7 @@ export default {
           noPositions: "Nu există poziții adăugate. Mutați motorul și apăsați ADD.",
           actualPosition: "POZIȚIE ACTUALĂ (PAȘI)",
           motorSpeed: "VITEZA MOTORULUI",
+          motorAcceleration: "ACCELERAȚIE",
           setNewHomePosition: "Setare poziție Home nouă",
           setHomeMessage: "Contorul va fi resetat și poziția fizică actuală va deveni Home (0 pași).",
           areYouSure: "Sigur doriți să continuați?",
@@ -754,6 +795,7 @@ export default {
           notHomed: "FĂRĂ HOMING - apăsați HOMING",
           motorMoving: "Motorul se mișcă...",
           ready: "Gata",
+          pressStart: "Apăsați START",
           mustHomeFirst: "Apăsați mai întâi HOMING!",
           stopMotorFirstHold: "Opriți mai întâi motorul (apăsați HOLD)",
           deletePosition: "Ștergeți această poziție?",
@@ -780,6 +822,7 @@ export default {
           noPositions: "لا توجد مواضع مضافة. حرّك الموتور واضغط ADD.",
           actualPosition: "الموضع الحالي (خطوات)",
           motorSpeed: "سرعة الموتور",
+          motorAcceleration: "تعجيل الموتور",
           setNewHomePosition: "تعيين موضع Home جديد",
           setHomeMessage: "سيتم تصفير العداد وجعل الموضع الحالي هو Home (0 خطوات).",
           areYouSure: "هل أنت متأكد من المتابعة؟",
@@ -808,6 +851,7 @@ export default {
           notHomed: "لم يتم Homing - اضغط HOMING",
           motorMoving: "الموتور يتحرك...",
           ready: "جاهز",
+          pressStart: "اضغط START",
           mustHomeFirst: "يجب الضغط على HOMING أولًا!",
           stopMotorFirstHold: "أوقف الموتور أولًا (اضغط HOLD)",
           deletePosition: "هل تريد حذف هذا الموضع؟",
@@ -834,6 +878,7 @@ export default {
           noPositions: "Nie dodano pozycji. Przesuń silnik i naciśnij ADD.",
           actualPosition: "AKTUALNA POZYCJA (KROKI)",
           motorSpeed: "PRĘDKOŚĆ SILNIKA",
+          motorAcceleration: "PRZYSPIESZENIE",
           setNewHomePosition: "Ustaw nową pozycję Home",
           setHomeMessage: "Licznik zostanie wyzerowany, a aktualna pozycja fizyczna ustawiona jako Home (0 kroków).",
           areYouSure: "Czy na pewno chcesz kontynuować?",
@@ -862,6 +907,7 @@ export default {
           notHomed: "BRAK HOMING - naciśnij HOMING",
           motorMoving: "Silnik się porusza...",
           ready: "Gotowy",
+          pressStart: "Naciśnij START",
           mustHomeFirst: "Najpierw naciśnij HOMING!",
           stopMotorFirstHold: "Najpierw zatrzymaj silnik (naciśnij HOLD)",
           deletePosition: "Usunąć tę pozycję?",
@@ -881,6 +927,7 @@ export default {
       nextId: 1,
       isHomed: false,
       isMoving: false,
+      isManualJogging: false,
       isHoming: false,
       isProgramRunning: false,
       isProgramPaused: false,
@@ -891,6 +938,8 @@ export default {
       activePositionIndex: -1,
       motorSpeed: 100,
       lastSpeedSent: 100,
+      motorAcceleration: 30,
+      lastAccelerationSent: 30,
       showHomeDialog: false,
       showStartDialog: false,
       pendingStartStepList: "",
@@ -961,6 +1010,14 @@ export default {
       return this.tr("ready");
     },
 
+    showPressStartHint() {
+      return this.isHomed && !this.isMoving && !this.isHoming && !this.isProgramRunning && !this.isProgramPaused && !this.isArmed;
+    },
+
+    slidersLocked() {
+      return this.isMoving || this.isHoming || (this.isProgramRunning && !this.isProgramPaused);
+    },
+
     statusColor() {
       if (this.isProgramPaused)  return "amber";
       if (this.isArmed)          return "purple";
@@ -1003,6 +1060,7 @@ export default {
       if (!isNaN(parsedTimeout)) this.cobotTimeoutSetting = parsedTimeout === 120 ? 900 : parsedTimeout;
     }
     this.sendCobotTimeout();
+    this.updateAcceleration(this.motorAcceleration);
   },
 
   beforeDestroy() {
@@ -1043,6 +1101,7 @@ export default {
             this.isArmed = (state === 5);
             this.isHoming = (state === 1);
             this.isMoving = (state === 2 || state === 3 || state === 7 || state === 11 || state === 12 || state === 13 || state === 17);
+            this.isManualJogging = (state === 2 || state === 3);
             this.isProgramPaused = this.isProgramPaused || (state === 16);
 
             if (this.isArmed) {
@@ -1302,6 +1361,7 @@ export default {
       // Motor movement only works in normal IDLE state.
       if (this.isArmed) { this.disarmIfArmed(); return; }
       this.isMoving = true;
+      this.isManualJogging = true;
       this.sendCommand("MOVE_FORWARD");
     },
 
@@ -1313,13 +1373,16 @@ export default {
       // Motor movement only works in normal IDLE state.
       if (this.isArmed) { this.disarmIfArmed(); return; }
       this.isMoving = true;
+      this.isManualJogging = true;
       this.sendCommand("MOVE_BACKWARD");
     },
 
     holdMotor() {
       if (this.isProgramRunning && !this.isProgramPaused) { return; }
+      if (!this.isManualJogging) return;
       if (!this.isProgramPaused) this.disarmIfArmed();
       this.isMoving = false;
+      this.isManualJogging = false;
       this.sendCommand("HOLD");
     },
 
@@ -1344,6 +1407,7 @@ export default {
       if (this.isArmed) { this.disarmIfArmed(); } // Disarm but continue to move
 
       this.isMoving = true;
+      this.isManualJogging = false;
       this.sendCommand("GO_HOME");
     },
 
@@ -1362,6 +1426,7 @@ export default {
       if (!selectedPosition || !this.canGoToPos) return;
       this.showGoToPosDialog = false;
       this.isMoving = true;
+      this.isManualJogging = false;
       this.sendCommand("GO_TO_POS " + selectedPosition.steps);
     },
 
@@ -1464,9 +1529,18 @@ export default {
     },
 
     updateSpeed(val) {
+      if (this.slidersLocked) return;
       if (val !== this.lastSpeedSent) {
         this.sendCommand("SET_SPEED " + val);
         this.lastSpeedSent = val;
+      }
+    },
+
+    updateAcceleration(val) {
+      if (this.slidersLocked) return;
+      if (val !== this.lastAccelerationSent) {
+        this.sendCommand("SET_ACCELERATION " + val);
+        this.lastAccelerationSent = val;
       }
     }
   }
