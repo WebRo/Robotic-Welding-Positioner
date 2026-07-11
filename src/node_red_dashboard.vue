@@ -477,7 +477,7 @@ font-size: xxx-large;
           </v-row>
 
           <!-- EXECUTION -->
-          <v-row dense>
+          <v-row dense class="mt-3">
             <v-col cols="12" sm="6">
               <!--
                 START:
