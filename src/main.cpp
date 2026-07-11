@@ -375,6 +375,15 @@ void processCommand(String cmd) {
       if (currentState != HOMING) stepper.setMaxSpeed(MAX_SPEED * (speedPercentage / 100.0));
       sendToNodeRED("STATUS:SPEED_SET_TO_" + String((int)speedPercentage));
     }
+  } else if (cmd.startsWith("SYNC_CURRENT_POSITION ")) {
+    long syncedPosition = cmd.substring(22).toInt();
+    if (!programRunning && currentState != HOMING && currentState != MANUAL_MOVING &&
+        currentState != MANUAL_DECELERATING && currentState != MANUAL_GO_HOME &&
+        currentState != MANUAL_GO_TO_POS) {
+      stepper.setCurrentPosition(syncedPosition);
+      sendToNodeRED("STEPS:" + String(stepper.currentPosition()));
+      sendToNodeRED("STATUS:CURRENT_POSITION_SYNCED");
+    }
   } else if (cmd.startsWith("SET_ACCELERATION ")) {
     float newAcceleration = cmd.substring(17).toFloat();
     if (newAcceleration >= 5.0 && newAcceleration <= 100.0) {

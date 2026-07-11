@@ -1513,6 +1513,7 @@ export default {
     confirmStartProgram() {
       if (!this.pendingStartStepList) return;
       this.showStartDialog = false;
+      this.sendCommand("SYNC_CURRENT_POSITION " + this.currentSteps);
       this.sendCommand("START_PROGRAM " + this.pendingStartStepList);
       this.pendingStartStepList = "";
       this.pendingStartPositionCount = 0;
