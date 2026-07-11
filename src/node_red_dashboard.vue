@@ -277,7 +277,7 @@ font-size: xxx-large;
     <v-row>
 
       <!-- ================= LEFT SIDE : POSITION TABLE ================= -->
-      <v-col cols="12" md="7">
+      <v-col cols="12" md="6">
         <v-card elevation="3" class="pa-4">
           <div class="d-flex justify-space-between align-center mb-4" style="gap: 12px; flex-wrap: wrap;">
              <h2>{{ tr("weldingPositions") }}</h2>
@@ -376,7 +376,7 @@ font-size: xxx-large;
       </v-col>
 
       <!-- ================= RIGHT SIDE : CONTROL PANEL ================= -->
-      <v-col cols="12" md="5">
+      <v-col cols="12" md="6">
         <v-card elevation="3" class="pa-4 text-center">
 
           <div class="d-flex justify-space-between align-center mb-2 actual-position-header" style="gap: 12px;">
@@ -652,7 +652,7 @@ export default {
           edit: "Edit",
           delete: "Delete",
           noPositions: "No positions added yet. Move motor and press ADD.",
-          actualPosition: "ACTUAL POSITION (STEPS)",
+          actualPosition: "POSITION",
           motorSpeed: "MOTOR SPEED",
           motorAcceleration: "ACCELERATION",
           setNewHomePosition: "Set New Home Position",
@@ -708,7 +708,7 @@ export default {
           edit: "Bearbeiten",
           delete: "Löschen",
           noPositions: "Noch keine Positionen hinzugefügt. Motor bewegen und ADD drücken.",
-          actualPosition: "AKTUELLE POSITION (SCHRITTE)",
+          actualPosition: "POSITION",
           motorSpeed: "MOTORGESCHWINDIGKEIT",
           motorAcceleration: "BESCHLEUNIGUNG",
           setNewHomePosition: "Neue Home-Position setzen",
@@ -764,7 +764,7 @@ export default {
           edit: "Editare",
           delete: "Ștergere",
           noPositions: "Nu există poziții adăugate. Mutați motorul și apăsați ADD.",
-          actualPosition: "POZIȚIE ACTUALĂ (PAȘI)",
+          actualPosition: "POZIȚIE",
           motorSpeed: "VITEZA MOTORULUI",
           motorAcceleration: "ACCELERAȚIE",
           setNewHomePosition: "Setare poziție Home nouă",
@@ -820,7 +820,7 @@ export default {
           edit: "تعديل",
           delete: "حذف",
           noPositions: "لا توجد مواضع مضافة. حرّك الموتور واضغط ADD.",
-          actualPosition: "الموضع الحالي (خطوات)",
+          actualPosition: "الموضع",
           motorSpeed: "سرعة الموتور",
           motorAcceleration: "تعجيل الموتور",
           setNewHomePosition: "تعيين موضع Home جديد",
@@ -876,7 +876,7 @@ export default {
           edit: "Edycja",
           delete: "Usuń",
           noPositions: "Nie dodano pozycji. Przesuń silnik i naciśnij ADD.",
-          actualPosition: "AKTUALNA POZYCJA (KROKI)",
+          actualPosition: "POZYCJA",
           motorSpeed: "PRĘDKOŚĆ SILNIKA",
           motorAcceleration: "PRZYSPIESZENIE",
           setNewHomePosition: "Ustaw nową pozycję Home",
